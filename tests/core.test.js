@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,13 @@ function restoreEnvVar(name, value) {
     return;
   }
   process.env[name] = value;
+}
+
+async function getTranscriptCacheFile(configDir) {
+  const cacheDir = path.join(configDir, 'plugins', 'claude-hud', 'transcript-cache');
+  const files = await readdir(cacheDir);
+  assert.equal(files.length, 1, `expected exactly one transcript cache file in ${cacheDir}`);
+  return path.join(cacheDir, files[0]);
 }
 
 test('getContextPercent returns 0 when data is missing', () => {
@@ -422,6 +429,103 @@ test('parseTranscript returns partial results when stream creation fails', async
     const result = await parseTranscript(transcriptDir);
     assert.equal(result.tools.length, 0);
   } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseTranscript reuses cached data when transcript state is unchanged', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-transcript-cache-'));
+  const configDir = path.join(dir, '.claude-test');
+  const transcriptPath = path.join(dir, 'cache-hit.jsonl');
+  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  const initialLine = `${JSON.stringify({
+    timestamp: '2024-01-01T00:00:00.000Z',
+    message: { content: [{ type: 'tool_use', id: 'tool-1', name: 'Read', input: { path: '/tmp/original.txt' } }] },
+  })}\n`;
+
+  process.env.CLAUDE_CONFIG_DIR = configDir;
+  await writeFile(transcriptPath, initialLine, 'utf8');
+  fs.utimesSync(transcriptPath, 1710000000, 1710000000);
+
+  try {
+    const first = await parseTranscript(transcriptPath);
+    assert.equal(first.tools.length, 1);
+    assert.equal(first.tools[0].target, '/tmp/original.txt');
+
+    const stat = fs.statSync(transcriptPath);
+    const corrupted = '#'.repeat(stat.size);
+    await writeFile(transcriptPath, corrupted, 'utf8');
+    fs.utimesSync(transcriptPath, 1710000000, 1710000000);
+
+    const second = await parseTranscript(transcriptPath);
+    assert.equal(second.tools.length, 1);
+    assert.equal(second.tools[0].target, '/tmp/original.txt');
+  } finally {
+    restoreEnvVar('CLAUDE_CONFIG_DIR', originalConfigDir);
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseTranscript invalidates cached data when transcript state changes', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-transcript-cache-'));
+  const configDir = path.join(dir, '.claude-test');
+  const transcriptPath = path.join(dir, 'cache-invalidate.jsonl');
+  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  const initialLine = `${JSON.stringify({
+    timestamp: '2024-01-01T00:00:00.000Z',
+    message: { content: [{ type: 'tool_use', id: 'tool-1', name: 'Read', input: { path: '/tmp/original.txt' } }] },
+  })}\n`;
+  const updatedLine = `${JSON.stringify({
+    timestamp: '2024-01-01T00:05:00.000Z',
+    message: { content: [{ type: 'tool_use', id: 'tool-2', name: 'Read', input: { path: '/tmp/updated.txt' } }] },
+  })}\n`;
+
+  process.env.CLAUDE_CONFIG_DIR = configDir;
+  await writeFile(transcriptPath, initialLine, 'utf8');
+  fs.utimesSync(transcriptPath, 1710000100, 1710000100);
+
+  try {
+    const first = await parseTranscript(transcriptPath);
+    assert.equal(first.tools[0].target, '/tmp/original.txt');
+
+    const stat = fs.statSync(transcriptPath);
+    await writeFile(transcriptPath, updatedLine, 'utf8');
+    fs.utimesSync(transcriptPath, 1710000101, 1710000101);
+
+    const second = await parseTranscript(transcriptPath);
+    assert.equal(second.tools.length, 1);
+    assert.equal(second.tools[0].target, '/tmp/updated.txt');
+  } finally {
+    restoreEnvVar('CLAUDE_CONFIG_DIR', originalConfigDir);
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseTranscript falls back to a fresh parse when the transcript cache is corrupted', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-transcript-cache-'));
+  const configDir = path.join(dir, '.claude-test');
+  const transcriptPath = path.join(dir, 'cache-corrupt.jsonl');
+  const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  const line = `${JSON.stringify({
+    timestamp: '2024-01-01T00:00:00.000Z',
+    message: { content: [{ type: 'tool_use', id: 'tool-1', name: 'Read', input: { path: '/tmp/original.txt' } }] },
+  })}\n`;
+
+  process.env.CLAUDE_CONFIG_DIR = configDir;
+  await writeFile(transcriptPath, line, 'utf8');
+
+  try {
+    const first = await parseTranscript(transcriptPath);
+    assert.equal(first.tools[0].target, '/tmp/original.txt');
+
+    const cachePath = await getTranscriptCacheFile(configDir);
+    await writeFile(cachePath, '{not-json}', 'utf8');
+
+    const second = await parseTranscript(transcriptPath);
+    assert.equal(second.tools.length, 1);
+    assert.equal(second.tools[0].target, '/tmp/original.txt');
+  } finally {
+    restoreEnvVar('CLAUDE_CONFIG_DIR', originalConfigDir);
     await rm(dir, { recursive: true, force: true });
   }
 });
