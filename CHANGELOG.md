@@ -4,6 +4,19 @@ All notable changes to Claude HUD will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.13] - 2026-04-13
+
+### Added
+- GLM usage support with dedicated `GLM 5h` and `MCP` display windows.
+
+### Changed
+- Split Claude and GLM usage display controls so GLM token usage, MCP usage, and GLM bar style can be configured independently.
+- Update setup/configure guidance so GLM usage options are shown as a single GLM-specific step when GLM is detected.
+
+### Fixed
+- Keep `GLM 5h` and `MCP` together on one continuation line when terminal width allows.
+- Improve fallback terminal width handling for environments where terminal columns are unavailable.
+
 ## [0.0.12] - 2026-04-04
 
 ### Added

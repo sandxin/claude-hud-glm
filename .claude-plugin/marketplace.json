@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "sandxin的Claude插件",
-    "version": "0.0.1"
+    "version": "0.0.13"
   },
   "plugins": [
     {
