@@ -84,6 +84,9 @@ export interface HudConfig {
     showTokenBreakdown: boolean;
     showUsage: boolean;
     usageBarEnabled: boolean;
+    showGlmTokenUsage: boolean;
+    showGlmMcpUsage: boolean;
+    glmBarEnable: boolean;
     showTools: boolean;
     showAgents: boolean;
     showTodos: boolean;
@@ -129,6 +132,9 @@ export const DEFAULT_CONFIG: HudConfig = {
     showTokenBreakdown: true,
     showUsage: true,
     usageBarEnabled: true,
+    showGlmTokenUsage: true,
+    showGlmMcpUsage: true,
+    glmBarEnable: true,
     showTools: false,
     showAgents: false,
     showTodos: false,
@@ -347,6 +353,21 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     usageBarEnabled: typeof migrated.display?.usageBarEnabled === 'boolean'
       ? migrated.display.usageBarEnabled
       : DEFAULT_CONFIG.display.usageBarEnabled,
+    showGlmTokenUsage: typeof (migrated.display as { showGlmTokenUsage?: unknown } | undefined)?.showGlmTokenUsage === 'boolean'
+      ? Boolean((migrated.display as { showGlmTokenUsage?: boolean }).showGlmTokenUsage)
+      : typeof migrated.display?.showUsage === 'boolean'
+        ? migrated.display.showUsage
+        : DEFAULT_CONFIG.display.showGlmTokenUsage,
+    showGlmMcpUsage: typeof (migrated.display as { showGlmMcpUsage?: unknown } | undefined)?.showGlmMcpUsage === 'boolean'
+      ? Boolean((migrated.display as { showGlmMcpUsage?: boolean }).showGlmMcpUsage)
+      : typeof (migrated.display as { showGlmMcp?: unknown } | undefined)?.showGlmMcp === 'boolean'
+        ? Boolean((migrated.display as { showGlmMcp?: boolean }).showGlmMcp)
+        : DEFAULT_CONFIG.display.showGlmMcpUsage,
+    glmBarEnable: typeof (migrated.display as { glmBarEnable?: unknown } | undefined)?.glmBarEnable === 'boolean'
+      ? Boolean((migrated.display as { glmBarEnable?: boolean }).glmBarEnable)
+      : typeof migrated.display?.usageBarEnabled === 'boolean'
+        ? migrated.display.usageBarEnabled
+        : DEFAULT_CONFIG.display.glmBarEnable,
     showTools: typeof migrated.display?.showTools === 'boolean'
       ? migrated.display.showTools
       : DEFAULT_CONFIG.display.showTools,

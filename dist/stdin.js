@@ -200,6 +200,7 @@ export function getUsageFromStdin(stdin) {
         return null;
     }
     return {
+        provider: 'claude',
         fiveHour,
         sevenDay,
         fiveHourResetAt: parseRateLimitResetAt(rateLimits.five_hour?.resets_at),

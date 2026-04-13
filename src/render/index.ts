@@ -271,7 +271,39 @@ function splitWrapParts(line: string): Array<{ separator: string; segment: strin
     ];
   }
 
-  return parts;
+  return mergeUsageContinuationParts(parts);
+}
+
+function mergeUsageContinuationParts(
+  parts: Array<{ separator: string; segment: string }>,
+): Array<{ separator: string; segment: string }> {
+  if (parts.length < 2) {
+    return parts;
+  }
+
+  const merged: Array<{ separator: string; segment: string }> = [];
+  let index = 0;
+
+  while (index < parts.length) {
+    const current = parts[index];
+    const currentVisible = stripAnsi(current.segment).trimStart();
+    const next = parts[index + 1];
+    const nextVisible = next ? stripAnsi(next.segment).trimStart() : '';
+
+    if (currentVisible.startsWith('GLM 5h') && next && next.separator === ' | ' && nextVisible.startsWith('MCP')) {
+      merged.push({
+        separator: current.separator,
+        segment: `${current.segment}${next.separator}${next.segment}`,
+      });
+      index += 2;
+      continue;
+    }
+
+    merged.push(current);
+    index += 1;
+  }
+
+  return merged;
 }
 
 function wrapLineToWidth(line: string, maxWidth: number): string[] {

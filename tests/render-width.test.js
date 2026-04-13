@@ -39,6 +39,9 @@ function baseContext() {
         showTokenBreakdown: true,
         showUsage: true,
         usageBarEnabled: false,
+        showGlmTokenUsage: true,
+        showGlmMcpUsage: true,
+        glmBarEnable: false,
         showTools: true,
         showAgents: true,
         showTodos: true,
@@ -324,6 +327,39 @@ test('render does not strand a bare 5h continuation line in compact mode', () =>
   assert.ok(lines.some(line => line.includes('Usage 5h 30%')), `expected usage window to keep its label: ${lines.join(' | ')}`);
   assert.ok(lines.some(line => line.includes('Weekly 85%')), `expected weekly usage window to render: ${lines.join(' | ')}`);
   assert.ok(!lines.some(line => line.startsWith('5h ')), `did not expect a bare 5h continuation line: ${lines.join(' | ')}`);
+});
+
+test('render keeps GLM 5h and MCP on the same continuation line when width allows', () => {
+  const ctx = baseContext();
+  ctx.config.lineLayout = 'compact';
+  ctx.config.display.glmBarEnable = false;
+  ctx.config.display.showConfigCounts = false;
+  ctx.config.display.showTools = false;
+  ctx.config.display.showTodos = false;
+  ctx.config.display.showAgents = false;
+  ctx.stdin.cwd = '/tmp/project';
+  ctx.extraLabel = 'Ethan';
+  ctx.usageData = {
+    provider: 'glm',
+    tokensPercent: 0,
+    mcpPercent: 44,
+    mcpCurrentUsage: 44,
+    mcpTotal: 100,
+    tokenResetAt: new Date('2026-04-13T16:18:00'),
+    mcpResetAt: new Date('2026-04-28T09:30:00'),
+    fetchedAt: Date.now(),
+  };
+
+  let lines = [];
+  withColumns(process.stdout, undefined, () => {
+    withColumns(process.stderr, 60, () => {
+      lines = captureRender(ctx);
+    });
+  });
+
+  assert.ok(lines.some(line => line.includes('Ethan')), `expected identity line to render: ${lines.join(' | ')}`);
+  assert.ok(lines.some(line => line.includes('GLM 5h: 0% 16:18 | MCP: 44% 04-28')), `expected GLM usage windows to share one continuation line: ${lines.join(' | ')}`);
+  assert.ok(!lines.some(line => line.trim() === 'MCP: 44% 04-28'), `did not expect MCP to be isolated on its own line: ${lines.join(' | ')}`);
 });
 
 test('render prefers stdout columns over COLUMNS env fallback', () => {

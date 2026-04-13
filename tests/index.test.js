@@ -250,6 +250,36 @@ test("main includes usageData in render context", async () => {
       mcpCount: 0,
       hooksCount: 0,
     }),
+    loadConfig: async () => ({
+      lineLayout: "compact",
+      showSeparators: false,
+      pathLevels: 1,
+      gitStatus: {
+        enabled: true,
+        showDirty: true,
+        showAheadBehind: false,
+        showFileStats: false,
+      },
+      display: {
+        showModel: true,
+        showContextBar: true,
+        contextValue: "percent",
+        showConfigCounts: true,
+        showDuration: true,
+        showSpeed: false,
+        showTokenBreakdown: true,
+        showUsage: true,
+        showTools: true,
+        showAgents: true,
+        showTodos: true,
+        showClaudeCodeVersion: false,
+        showMemoryUsage: false,
+        autocompactBuffer: "enabled",
+        usageThreshold: 0,
+        sevenDayThreshold: 80,
+        environmentThreshold: 0,
+      },
+    }),
     getGitBranch: async () => null,
     render: (ctx) => {
       renderedContext = ctx;
@@ -257,6 +287,7 @@ test("main includes usageData in render context", async () => {
   });
 
   assert.deepEqual(renderedContext?.usageData, {
+    provider: "claude",
     fiveHour: 50,
     sevenDay: 25,
     fiveHourResetAt: new Date(1710000000 * 1000),
@@ -282,6 +313,36 @@ test("main uses stdin-native rate_limits when available", async () => {
       mcpCount: 0,
       hooksCount: 0,
     }),
+    loadConfig: async () => ({
+      lineLayout: "compact",
+      showSeparators: false,
+      pathLevels: 1,
+      gitStatus: {
+        enabled: true,
+        showDirty: true,
+        showAheadBehind: false,
+        showFileStats: false,
+      },
+      display: {
+        showModel: true,
+        showContextBar: true,
+        contextValue: "percent",
+        showConfigCounts: true,
+        showDuration: true,
+        showSpeed: false,
+        showTokenBreakdown: true,
+        showUsage: true,
+        showTools: true,
+        showAgents: true,
+        showTodos: true,
+        showClaudeCodeVersion: false,
+        showMemoryUsage: false,
+        autocompactBuffer: "enabled",
+        usageThreshold: 0,
+        sevenDayThreshold: 80,
+        environmentThreshold: 0,
+      },
+    }),
     getGitStatus: async () => null,
     render: (ctx) => {
       renderedContext = ctx;
@@ -289,6 +350,147 @@ test("main uses stdin-native rate_limits when available", async () => {
   });
 
   assert.deepEqual(renderedContext?.usageData, {
+    provider: "claude",
+    fiveHour: 22,
+    sevenDay: 55,
+    fiveHourResetAt: new Date(1710000000 * 1000),
+    sevenDayResetAt: new Date(1710600000 * 1000),
+  });
+});
+
+test("main prefers GLM usage over stdin rate_limits when available", async () => {
+  let renderedContext;
+
+  await main({
+    readStdin: async () => ({
+      model: { display_name: "Opus" },
+      rate_limits: {
+        five_hour: { used_percentage: 21.9, resets_at: 1710000000 },
+        seven_day: { used_percentage: 55.2, resets_at: 1710600000 },
+      },
+    }),
+    parseTranscript: async () => ({ tools: [], agents: [], todos: [] }),
+    countConfigs: async () => ({
+      claudeMdCount: 0,
+      rulesCount: 0,
+      mcpCount: 0,
+      hooksCount: 0,
+    }),
+    loadConfig: async () => ({
+      lineLayout: "compact",
+      showSeparators: false,
+      pathLevels: 1,
+      gitStatus: {
+        enabled: true,
+        showDirty: true,
+        showAheadBehind: false,
+        showFileStats: false,
+      },
+      display: {
+        showModel: true,
+        showContextBar: true,
+        contextValue: "percent",
+        showConfigCounts: true,
+        showDuration: true,
+        showSpeed: false,
+        showTokenBreakdown: true,
+        showUsage: true,
+        showTools: true,
+        showAgents: true,
+        showTodos: true,
+        showClaudeCodeVersion: false,
+        showMemoryUsage: false,
+        autocompactBuffer: "enabled",
+        usageThreshold: 0,
+        sevenDayThreshold: 80,
+        environmentThreshold: 0,
+      },
+    }),
+    getGitStatus: async () => null,
+    getGlmUsage: async () => ({
+      provider: "glm",
+      tokensPercent: 19,
+      mcpPercent: 41,
+      mcpCurrentUsage: 12,
+      mcpTotal: 30,
+      tokenResetAt: new Date("2026-04-13T20:10:00"),
+      mcpResetAt: new Date("2026-04-28T09:30:00"),
+      fetchedAt: Date.now(),
+    }),
+    render: (ctx) => {
+      renderedContext = ctx;
+    },
+  });
+
+  assert.deepEqual(renderedContext?.usageData, {
+    provider: "glm",
+    tokensPercent: 19,
+    mcpPercent: 41,
+    mcpCurrentUsage: 12,
+    mcpTotal: 30,
+    tokenResetAt: new Date("2026-04-13T20:10:00"),
+    mcpResetAt: new Date("2026-04-28T09:30:00"),
+    fetchedAt: renderedContext?.usageData?.fetchedAt,
+  });
+});
+
+test("main falls back to stdin rate_limits when GLM usage is unavailable", async () => {
+  let renderedContext;
+
+  await main({
+    readStdin: async () => ({
+      model: { display_name: "Opus" },
+      rate_limits: {
+        five_hour: { used_percentage: 21.9, resets_at: 1710000000 },
+        seven_day: { used_percentage: 55.2, resets_at: 1710600000 },
+      },
+    }),
+    parseTranscript: async () => ({ tools: [], agents: [], todos: [] }),
+    countConfigs: async () => ({
+      claudeMdCount: 0,
+      rulesCount: 0,
+      mcpCount: 0,
+      hooksCount: 0,
+    }),
+    loadConfig: async () => ({
+      lineLayout: "compact",
+      showSeparators: false,
+      pathLevels: 1,
+      gitStatus: {
+        enabled: true,
+        showDirty: true,
+        showAheadBehind: false,
+        showFileStats: false,
+      },
+      display: {
+        showModel: true,
+        showContextBar: true,
+        contextValue: "percent",
+        showConfigCounts: true,
+        showDuration: true,
+        showSpeed: false,
+        showTokenBreakdown: true,
+        showUsage: true,
+        showTools: true,
+        showAgents: true,
+        showTodos: true,
+        showClaudeCodeVersion: false,
+        showMemoryUsage: false,
+        autocompactBuffer: "enabled",
+        usageThreshold: 0,
+        sevenDayThreshold: 80,
+        environmentThreshold: 0,
+      },
+    }),
+    getGitStatus: async () => null,
+    getGlmUsage: async () => null,
+    render: (ctx) => {
+      renderedContext = ctx;
+    },
+  });
+
+  assert.deepEqual(renderedContext?.usageData, {
+    provider: "claude",
     fiveHour: 22,
     sevenDay: 55,
     fiveHourResetAt: new Date(1710000000 * 1000),

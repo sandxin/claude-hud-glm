@@ -54,6 +54,9 @@ test('loadConfig returns valid config structure', async () => {
   assert.equal(typeof config.display.showSpeed, 'boolean');
   assert.equal(typeof config.display.showTokenBreakdown, 'boolean');
   assert.equal(typeof config.display.showUsage, 'boolean');
+  assert.equal(typeof config.display.showGlmTokenUsage, 'boolean');
+  assert.equal(typeof config.display.showGlmMcpUsage, 'boolean');
+  assert.equal(typeof config.display.glmBarEnable, 'boolean');
   assert.equal(typeof config.display.showTools, 'boolean');
   assert.equal(typeof config.display.showAgents, 'boolean');
   assert.equal(typeof config.display.showTodos, 'boolean');
@@ -151,6 +154,39 @@ test('mergeConfig defaults showOutputStyle to false', () => {
 test('mergeConfig preserves explicit showOutputStyle=true', () => {
   const config = mergeConfig({ display: { showOutputStyle: true } });
   assert.equal(config.display.showOutputStyle, true);
+});
+
+test('mergeConfig defaults GLM usage toggles to enabled', () => {
+  const config = mergeConfig({});
+  assert.equal(config.display.showGlmTokenUsage, true);
+  assert.equal(config.display.showGlmMcpUsage, true);
+  assert.equal(config.display.glmBarEnable, true);
+});
+
+test('mergeConfig preserves explicit GLM usage toggles', () => {
+  const config = mergeConfig({
+    display: {
+      showGlmTokenUsage: false,
+      showGlmMcpUsage: false,
+      glmBarEnable: false,
+    },
+  });
+  assert.equal(config.display.showGlmTokenUsage, false);
+  assert.equal(config.display.showGlmMcpUsage, false);
+  assert.equal(config.display.glmBarEnable, false);
+});
+
+test('mergeConfig migrates legacy GLM settings to the new keys', () => {
+  const config = mergeConfig({
+    display: Object.assign({}, {
+      showUsage: false,
+      showGlmMcp: false,
+      usageBarEnabled: false,
+    }),
+  });
+  assert.equal(config.display.showGlmTokenUsage, false);
+  assert.equal(config.display.showGlmMcpUsage, false);
+  assert.equal(config.display.glmBarEnable, false);
 });
 
 test('mergeConfig preserves customLine and truncates long values', () => {

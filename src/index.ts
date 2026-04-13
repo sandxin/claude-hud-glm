@@ -1,4 +1,5 @@
 import { readStdin, getUsageFromStdin } from "./stdin.js";
+import { getGlmUsage } from "./glm-usage.js";
 import { parseTranscript } from "./transcript.js";
 import { render } from "./render/index.js";
 import { countConfigs } from "./config-reader.js";
@@ -15,6 +16,7 @@ import { realpathSync } from "node:fs";
 export type MainDeps = {
   readStdin: typeof readStdin;
   getUsageFromStdin: typeof getUsageFromStdin;
+  getGlmUsage: typeof getGlmUsage;
   parseTranscript: typeof parseTranscript;
   countConfigs: typeof countConfigs;
   getGitStatus: typeof getGitStatus;
@@ -32,6 +34,7 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
   const deps: MainDeps = {
     readStdin,
     getUsageFromStdin,
+    getGlmUsage,
     parseTranscript,
     countConfigs,
     getGitStatus,
@@ -73,9 +76,15 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       ? await deps.getGitStatus(stdin.cwd)
       : null;
 
-    // Usage comes only from Claude Code's official stdin rate_limits fields.
+    const shouldShowClaudeUsage = config.display.showUsage !== false;
+    const shouldShowGlmUsage = config.display.showGlmTokenUsage !== false || config.display.showGlmMcpUsage !== false;
+
+    // Prefer GLM usage when the session is routed through a supported GLM host.
     let usageData: RenderContext["usageData"] = null;
-    if (config.display.showUsage !== false) {
+    if (shouldShowGlmUsage) {
+      usageData = await deps.getGlmUsage();
+    }
+    if (!usageData && shouldShowClaudeUsage) {
       usageData = deps.getUsageFromStdin(stdin);
     }
 

@@ -57,12 +57,24 @@ export interface TodoItem {
     content: string;
     status: 'pending' | 'in_progress' | 'completed';
 }
-export interface UsageData {
+export interface ClaudeUsageData {
+    provider: 'claude';
     fiveHour: number | null;
     sevenDay: number | null;
     fiveHourResetAt: Date | null;
     sevenDayResetAt: Date | null;
 }
+export interface GlmUsageData {
+    provider: 'glm';
+    tokensPercent: number | null;
+    mcpPercent: number | null;
+    mcpCurrentUsage: number | null;
+    mcpTotal: number | null;
+    tokenResetAt: Date | null;
+    mcpResetAt: Date | null;
+    fetchedAt: number;
+}
+export type UsageData = ClaudeUsageData | GlmUsageData;
 export interface MemoryInfo {
     totalBytes: number;
     usedBytes: number;

@@ -18,15 +18,20 @@ These are always enabled and NOT configurable:
 Advanced settings such as `colors.*`, `pathLevels`, `display.usageThreshold`, and
 `display.environmentThreshold` are preserved when saving but are not edited by this guided flow.
 
+If the current environment is routed through GLM, include one extra GLM-specific step after the normal flow. Keep it separate from the common on/off questions so no single prompt has too many options.
+This GLM step must always be shown in GLM environments, even if all GLM display options are currently disabled in config.
+
 ---
 
 ## Two Flows Based on Config State
 
 ### Flow A: New User (no config)
 Questions: **Layout → Preset → Language → Turn Off → Turn On → Custom Line**
+If GLM is detected, always add: **GLM Usage**
 
 ### Flow B: Update Config (config exists)
-Questions: **Turn Off → Turn On → Git Style → Layout/Reset → Language → Custom Line** (6 questions max)
+Questions: **Turn Off → Turn On → Git Style → Layout/Reset → Language → Custom Line**
+If GLM is detected, always add: **GLM Usage**
 
 ---
 
@@ -255,6 +260,26 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 - `display.showModel: true`
 - `display.showContextBar: true`
 
+## GLM Usage Step (only when GLM environment is detected)
+
+This is a required final question for both Flow A and Flow B whenever GLM is detected from the current environment.
+Do not skip it just because `display.showGlmTokenUsage`, `display.showGlmMcpUsage`, or `display.glmBarEnable` are currently `false`.
+Ask it after the normal flow finishes.
+
+### GLM Sections
+- header: "GLM Usage"
+- question: "Choose which GLM usage items to show:"
+- multiSelect: true
+- options:
+  - "GLM 5h" - `GLM 5h: 19% 20:10`
+  - "MCP" - `MCP: 41% 04-28`
+  - "Bars" - Show GLM usage with progress bars instead of text
+
+Mapping:
+- `GLM 5h` → `display.showGlmTokenUsage`
+- `MCP` → `display.showGlmMcpUsage`
+- `Bars` → `display.glmBarEnable`
+
 ---
 
 ## Usage Style Mapping
@@ -264,7 +289,7 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 | Bar style | `display.usageBarEnabled: true` — Shows `██░░ 25% (1h 30m / 5h)` |
 | Text style | `display.usageBarEnabled: false` — Shows `5h: 25% (1h 30m)` |
 
-**Note**: Usage style only applies when `display.showUsage: true`. When 7d usage >= 80%, it also shows with the same style.
+**Note**: Claude usage style only applies when `display.showUsage: true`. GLM usage style is controlled separately by `display.glmBarEnable`.
 
 ---
 

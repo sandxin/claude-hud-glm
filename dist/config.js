@@ -39,6 +39,9 @@ export const DEFAULT_CONFIG = {
         showTokenBreakdown: true,
         showUsage: true,
         usageBarEnabled: true,
+        showGlmTokenUsage: true,
+        showGlmMcpUsage: true,
+        glmBarEnable: true,
         showTools: false,
         showAgents: false,
         showTodos: false,
@@ -234,6 +237,21 @@ export function mergeConfig(userConfig) {
         usageBarEnabled: typeof migrated.display?.usageBarEnabled === 'boolean'
             ? migrated.display.usageBarEnabled
             : DEFAULT_CONFIG.display.usageBarEnabled,
+        showGlmTokenUsage: typeof migrated.display?.showGlmTokenUsage === 'boolean'
+            ? Boolean(migrated.display.showGlmTokenUsage)
+            : typeof migrated.display?.showUsage === 'boolean'
+                ? migrated.display.showUsage
+                : DEFAULT_CONFIG.display.showGlmTokenUsage,
+        showGlmMcpUsage: typeof migrated.display?.showGlmMcpUsage === 'boolean'
+            ? Boolean(migrated.display.showGlmMcpUsage)
+            : typeof migrated.display?.showGlmMcp === 'boolean'
+                ? Boolean(migrated.display.showGlmMcp)
+                : DEFAULT_CONFIG.display.showGlmMcpUsage,
+        glmBarEnable: typeof migrated.display?.glmBarEnable === 'boolean'
+            ? Boolean(migrated.display.glmBarEnable)
+            : typeof migrated.display?.usageBarEnabled === 'boolean'
+                ? migrated.display.usageBarEnabled
+                : DEFAULT_CONFIG.display.glmBarEnable,
         showTools: typeof migrated.display?.showTools === 'boolean'
             ? migrated.display.showTools
             : DEFAULT_CONFIG.display.showTools,

@@ -54,6 +54,9 @@ export interface HudConfig {
         showTokenBreakdown: boolean;
         showUsage: boolean;
         usageBarEnabled: boolean;
+        showGlmTokenUsage: boolean;
+        showGlmMcpUsage: boolean;
+        glmBarEnable: boolean;
         showTools: boolean;
         showAgents: boolean;
         showTodos: boolean;

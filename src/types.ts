@@ -63,12 +63,26 @@ export interface TodoItem {
   status: 'pending' | 'in_progress' | 'completed';
 }
 
-export interface UsageData {
+export interface ClaudeUsageData {
+  provider: 'claude';
   fiveHour: number | null;  // 0-100 percentage, null if unavailable
   sevenDay: number | null;  // 0-100 percentage, null if unavailable
   fiveHourResetAt: Date | null;
   sevenDayResetAt: Date | null;
 }
+
+export interface GlmUsageData {
+  provider: 'glm';
+  tokensPercent: number | null;
+  mcpPercent: number | null;
+  mcpCurrentUsage: number | null;
+  mcpTotal: number | null;
+  tokenResetAt: Date | null;
+  mcpResetAt: Date | null;
+  fetchedAt: number;
+}
+
+export type UsageData = ClaudeUsageData | GlmUsageData;
 
 export interface MemoryInfo {
   totalBytes: number;
@@ -79,7 +93,11 @@ export interface MemoryInfo {
 
 /** Check if usage limit is reached (either window at 100%) */
 export function isLimitReached(data: UsageData): boolean {
-  return data.fiveHour === 100 || data.sevenDay === 100;
+  if ((data as { provider?: string }).provider === 'glm') {
+    return false;
+  }
+  return (data as { fiveHour?: number | null }).fiveHour === 100
+    || (data as { sevenDay?: number | null }).sevenDay === 100;
 }
 
 export interface SessionTokenUsage {

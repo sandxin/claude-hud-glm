@@ -1,9 +1,9 @@
-import { isLimitReached } from '../types.js';
 import { getContextPercent, getBufferedPercent, getModelName, formatModelName, getProviderLabel, getTotalTokens } from '../stdin.js';
 import { getOutputSpeed } from '../speed-tracker.js';
-import { coloredBar, critical, git as gitColor, gitBranch as gitBranchColor, label, model as modelColor, project as projectColor, getContextColor, getQuotaColor, quotaBar, custom as customColor, RESET } from './colors.js';
+import { coloredBar, git as gitColor, gitBranch as gitBranchColor, label, model as modelColor, project as projectColor, getContextColor, custom as customColor, RESET } from './colors.js';
 import { getAdaptiveBarWidth } from '../utils/terminal.js';
 import { renderCostEstimate } from './lines/cost.js';
+import { getCompactUsageParts, shouldRenderUsageData } from './usage-display.js';
 import { t } from '../i18n/index.js';
 const DEBUG = process.env.DEBUG?.includes('claude-hud') || process.env.DEBUG === '*';
 /**
@@ -125,62 +125,13 @@ export function renderSessionLine(ctx) {
             }
         }
     }
-    // Usage limits display (shown when enabled in config, respects usageThreshold)
-    if (display?.showUsage !== false && ctx.usageData && !providerLabel) {
-        if (isLimitReached(ctx.usageData)) {
-            const resetTime = ctx.usageData.fiveHour === 100
-                ? formatResetTime(ctx.usageData.fiveHourResetAt)
-                : formatResetTime(ctx.usageData.sevenDayResetAt);
-            parts.push(critical(`⚠ ${t('status.limitReached')}${resetTime ? ` (${t('format.resets')} ${resetTime})` : ''}`, colors));
-        }
-        else {
-            const usageThreshold = display?.usageThreshold ?? 0;
-            const fiveHour = ctx.usageData.fiveHour;
-            const sevenDay = ctx.usageData.sevenDay;
-            const effectiveUsage = Math.max(fiveHour ?? 0, sevenDay ?? 0);
-            if (effectiveUsage >= usageThreshold) {
-                const usageBarEnabled = display?.usageBarEnabled ?? true;
-                if (fiveHour === null && sevenDay !== null) {
-                    const weeklyOnlyPart = formatUsageWindowPart({
-                        label: t('label.weekly'),
-                        percent: sevenDay,
-                        resetAt: ctx.usageData.sevenDayResetAt,
-                        colors,
-                        usageBarEnabled,
-                        barWidth,
-                        forceLabel: true,
-                    });
-                    parts.push(weeklyOnlyPart);
-                }
-                else {
-                    const fiveHourPart = formatUsageWindowPart({
-                        label: '5h',
-                        percent: fiveHour,
-                        resetAt: ctx.usageData.fiveHourResetAt,
-                        colors,
-                        usageBarEnabled,
-                        barWidth,
-                    });
-                    const sevenDayThreshold = display?.sevenDayThreshold ?? 80;
-                    if (sevenDay !== null && sevenDay >= sevenDayThreshold) {
-                        const sevenDayPart = formatUsageWindowPart({
-                            label: t('label.weekly'),
-                            percent: sevenDay,
-                            resetAt: ctx.usageData.sevenDayResetAt,
-                            colors,
-                            usageBarEnabled,
-                            barWidth,
-                            forceLabel: true,
-                        });
-                        parts.push(`${label(t('label.usage'), colors)} ${fiveHourPart}`);
-                        parts.push(sevenDayPart);
-                    }
-                    else {
-                        parts.push(`${label(t('label.usage'), colors)} ${fiveHourPart}`);
-                    }
-                }
-            }
-        }
+    // Usage limits display (Claude stdin or GLM API, depending on provider detection)
+    const usageData = ctx.usageData;
+    if (usageData && shouldRenderUsageData(usageData, ctx.config) && !providerLabel) {
+        parts.push(...getCompactUsageParts(usageData, ctx.config, {
+            colors,
+            barWidth,
+        }));
     }
     // Session token usage (cumulative)
     if (display?.showSessionTokens && ctx.transcript.sessionTokens) {
@@ -252,47 +203,5 @@ function formatContextValue(ctx, percent, mode) {
         return `${Math.max(0, 100 - percent)}%`;
     }
     return `${percent}%`;
-}
-function formatUsagePercent(percent, colors) {
-    if (percent === null) {
-        return label('--', colors);
-    }
-    const color = getQuotaColor(percent, colors);
-    return `${color}${percent}%${RESET}`;
-}
-function formatUsageWindowPart({ label: windowLabel, percent, resetAt, colors, usageBarEnabled, barWidth, forceLabel = false, }) {
-    const usageDisplay = formatUsagePercent(percent, colors);
-    const reset = formatResetTime(resetAt);
-    const styledLabel = label(windowLabel, colors);
-    if (usageBarEnabled) {
-        const body = reset
-            ? `${quotaBar(percent ?? 0, barWidth, colors)} ${usageDisplay} (${reset} / ${windowLabel})`
-            : `${quotaBar(percent ?? 0, barWidth, colors)} ${usageDisplay}`;
-        return forceLabel ? `${styledLabel} ${body}` : body;
-    }
-    return reset
-        ? `${styledLabel} ${usageDisplay} (${t('format.resetsIn')} ${reset})`
-        : `${styledLabel} ${usageDisplay}`;
-}
-function formatResetTime(resetAt) {
-    if (!resetAt)
-        return '';
-    const now = new Date();
-    const diffMs = resetAt.getTime() - now.getTime();
-    if (diffMs <= 0)
-        return '';
-    const diffMins = Math.ceil(diffMs / 60000);
-    if (diffMins < 60)
-        return `${diffMins}m`;
-    const hours = Math.floor(diffMins / 60);
-    const mins = diffMins % 60;
-    if (hours >= 24) {
-        const days = Math.floor(hours / 24);
-        const remHours = hours % 24;
-        if (remHours > 0)
-            return `${days}d ${remHours}h`;
-        return `${days}d`;
-    }
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 //# sourceMappingURL=session-line.js.map

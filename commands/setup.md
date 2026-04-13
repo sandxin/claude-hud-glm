@@ -258,6 +258,27 @@ Use AskUserQuestion:
   - "Agents & Todos" — Shows subagent status and todo progress
   - "Session info" — Shows session duration and config counts (CLAUDE.md, rules, MCPs)
   - "Session name" — Shows session slug or custom title from /rename
+
+## Step 5: GLM Usage Options (Only When GLM Environment Is Detected)
+
+If `ANTHROPIC_BASE_URL` points at a supported GLM host and `ANTHROPIC_AUTH_TOKEN` is present, ask one extra GLM question after Step 4.
+
+Use AskUserQuestion:
+- header: "GLM Usage"
+- question: "Which GLM usage items do you want to show?"
+- multiSelect: true
+- options:
+  - "GLM 5h" — Shows `GLM 5h: 19% 20:10`
+  - "MCP" — Shows `MCP: 41% 04-28`
+  - "Bars" — Shows GLM usage with progress bars instead of text
+
+Map to config:
+- `GLM 5h` → `display.showGlmTokenUsage: true`
+- Unselected `GLM 5h` → `false`
+- `MCP` → `display.showGlmMcpUsage: true`
+- Unselected `MCP` → `false`
+- `Bars` → `display.glmBarEnable: true`
+- Unselected `Bars` → `false`
   - "Custom line" — Display a custom phrase in the HUD
 
 **If user selects any options**, write `plugins/claude-hud/config.json` inside the Claude config directory (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}` on bash, `$env:CLAUDE_CONFIG_DIR` or `Join-Path $HOME ".claude"` on PowerShell). Create directories if needed:

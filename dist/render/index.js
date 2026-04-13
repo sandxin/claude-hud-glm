@@ -224,7 +224,31 @@ function splitWrapParts(line) {
             ...parts.slice(consumeIndex),
         ];
     }
-    return parts;
+    return mergeUsageContinuationParts(parts);
+}
+function mergeUsageContinuationParts(parts) {
+    if (parts.length < 2) {
+        return parts;
+    }
+    const merged = [];
+    let index = 0;
+    while (index < parts.length) {
+        const current = parts[index];
+        const currentVisible = stripAnsi(current.segment).trimStart();
+        const next = parts[index + 1];
+        const nextVisible = next ? stripAnsi(next.segment).trimStart() : '';
+        if (currentVisible.startsWith('GLM 5h') && next && next.separator === ' | ' && nextVisible.startsWith('MCP')) {
+            merged.push({
+                separator: current.separator,
+                segment: `${current.segment}${next.separator}${next.segment}`,
+            });
+            index += 2;
+            continue;
+        }
+        merged.push(current);
+        index += 1;
+    }
+    return merged;
 }
 function wrapLineToWidth(line, maxWidth) {
     if (maxWidth <= 0 || visualLength(line) <= maxWidth) {

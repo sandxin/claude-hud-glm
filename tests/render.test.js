@@ -50,7 +50,7 @@ function baseContext() {
       pathLevels: 1,
       elementOrder: ['project', 'context', 'usage', 'memory', 'environment', 'tools', 'agents', 'todos'],
       gitStatus: { enabled: true, showDirty: true, showAheadBehind: false, showFileStats: false, pushWarningThreshold: 0, pushCriticalThreshold: 0 },
-      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageBarEnabled: false, showTools: true, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showOutputStyle: false, autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
+      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageBarEnabled: false, showGlmTokenUsage: true, showGlmMcpUsage: true, glmBarEnable: false, showTools: true, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showOutputStyle: false, autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
       colors: {
         context: 'green',
         usage: 'brightBlue',
@@ -1394,6 +1394,85 @@ test('renderUsageLine uses custom usage palette overrides', () => {
   assert.ok(line.includes('\x1b[36m25%\x1b[0m'), `expected custom usage percentage color, got: ${JSON.stringify(line)}`);
   assert.ok(line.includes('\x1b[35m████████'), `expected custom usage warning color, got: ${JSON.stringify(line)}`);
   assert.ok(line.includes('\x1b[35m80%\x1b[0m'), `expected custom usage warning percentage color, got: ${JSON.stringify(line)}`);
+});
+
+test('renderUsageLine renders GLM windows with bar style and MCP date only', () => {
+  const ctx = baseContext();
+  ctx.config.display.usageBarEnabled = true;
+  ctx.usageData = {
+    provider: 'glm',
+    tokensPercent: 19,
+    mcpPercent: 41,
+    mcpCurrentUsage: 12,
+    mcpTotal: 30,
+    tokenResetAt: new Date('2026-04-13T20:10:00'),
+    mcpResetAt: new Date('2026-04-28T09:30:00'),
+    fetchedAt: Date.now(),
+  };
+
+  const line = stripAnsi(renderUsageLine(ctx) ?? '');
+  assert.ok(line.includes('GLM 5h'), `should show GLM 5h label: ${line}`);
+  assert.ok(line.includes('19% 20:10'), `should show GLM reset time as HH:mm: ${line}`);
+  assert.ok(line.includes('MCP'), `should show MCP label: ${line}`);
+  assert.ok(line.includes('41% 04-28'), `should show MCP reset date as MM-DD: ${line}`);
+  assert.ok(!line.includes('Usage'), `should replace Usage label in GLM mode: ${line}`);
+});
+
+test('renderSessionLine renders GLM windows in text-only mode', () => {
+  const ctx = baseContext();
+  ctx.config.display.glmBarEnable = false;
+  ctx.usageData = {
+    provider: 'glm',
+    tokensPercent: 19,
+    mcpPercent: 41,
+    mcpCurrentUsage: null,
+    mcpTotal: null,
+    tokenResetAt: new Date('2026-04-13T20:10:00'),
+    mcpResetAt: new Date('2026-04-28T09:30:00'),
+    fetchedAt: Date.now(),
+  };
+
+  const line = stripAnsi(renderSessionLine(ctx));
+  assert.ok(line.includes('GLM 5h: 19% 20:10'), `should show text-only GLM section: ${line}`);
+  assert.ok(line.includes('MCP: 41% 04-28'), `should show text-only MCP section: ${line}`);
+});
+
+test('renderUsageLine respects GLM MCP toggle while always showing GLM 5h', () => {
+  const ctx = baseContext();
+  ctx.config.display.showGlmMcpUsage = false;
+  ctx.usageData = {
+    provider: 'glm',
+    tokensPercent: 19,
+    mcpPercent: 41,
+    mcpCurrentUsage: null,
+    mcpTotal: null,
+    tokenResetAt: new Date('2026-04-13T20:10:00'),
+    mcpResetAt: new Date('2026-04-28T09:30:00'),
+    fetchedAt: Date.now(),
+  };
+
+  const line = stripAnsi(renderUsageLine(ctx) ?? '');
+  assert.ok(line.includes('GLM 5h'), `should keep GLM 5h under unified showUsage control: ${line}`);
+  assert.ok(!line.includes('MCP'), `should hide MCP when disabled: ${line}`);
+});
+
+test('renderUsageLine hides GLM 5h when showGlmTokenUsage is false', () => {
+  const ctx = baseContext();
+  ctx.config.display.showGlmTokenUsage = false;
+  ctx.usageData = {
+    provider: 'glm',
+    tokensPercent: 19,
+    mcpPercent: 41,
+    mcpCurrentUsage: null,
+    mcpTotal: null,
+    tokenResetAt: new Date('2026-04-13T20:10:00'),
+    mcpResetAt: new Date('2026-04-28T09:30:00'),
+    fetchedAt: Date.now(),
+  };
+
+  const line = stripAnsi(renderUsageLine(ctx) ?? '');
+  assert.ok(!line.includes('GLM 5h'), `should hide GLM 5h when disabled: ${line}`);
+  assert.ok(line.includes('MCP'), `should still show MCP when enabled: ${line}`);
 });
 
 test('renderSessionLine hides usage when showUsage config is false (hybrid toggle)', () => {

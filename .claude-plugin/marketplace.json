@@ -1,12 +1,12 @@
 {
-  "name": "claude-hud",
+  "name": "sandxin",
   "owner": {
-    "name": "Jarrod Watts",
-    "email": "jarrodwattsyt@gmail.com"
+    "name": "sandxin",
+    "email": "yx.sand@gmail.com"
   },
   "metadata": {
-    "description": "Real-time statusline HUD for Claude Code - context health, tool activity, agent tracking, and todo progress",
-    "version": "0.0.12"
+    "description": "sandxin的Claude插件",
+    "version": "0.0.1"
   },
   "plugins": [
     {
